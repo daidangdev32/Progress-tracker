@@ -160,6 +160,15 @@
     background:var(--panel-2);border:1px solid var(--border);color:var(--muted);
   }
   table.weeks .pill.now{background:rgba(0,255,136,.1);color:var(--accent);border-color:rgba(0,255,136,.3)}
+  table.weeks .pill.good{background:rgba(0,255,136,.08);color:var(--good);border-color:rgba(0,255,136,.3)}
+  table.weeks .pill.warn{background:rgba(255,204,68,.08);color:var(--warn);border-color:rgba(255,204,68,.35)}
+  table.weeks .pill.bad{background:rgba(255,85,85,.08);color:var(--bad);border-color:rgba(255,85,85,.35)}
+  table.weeks .pill.cyan{background:rgba(0,217,255,.08);color:var(--accent-2);border-color:rgba(0,217,255,.3)}
+  table.weeks .num{font-family:var(--mono);font-weight:600;color:var(--text)}
+  table.weeks .num.good{color:var(--good)}
+  table.weeks .num.warn{color:var(--warn)}
+  table.weeks .num.bad{color:var(--bad)}
+  table.weeks .num small{font-weight:400;color:var(--muted);font-size:11px;margin-left:2px}
   table.weeks input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
   .weeks-wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--border);border-radius:10px}
 
@@ -375,9 +384,9 @@
       </div>
       <div class="panel">
         <div class="label">track 2 · security+</div>
-        <div class="bar-label" style="margin-top:8px"><span>SY0-701 Sections</span><b><span id="secSections">0</span> / 5</b></div>
+        <div class="bar-label" style="margin-top:8px"><span>Messer videos watched</span><b><span id="secHours">0</span> / 15 hrs</b></div>
         <div class="bar"><i id="secBar" style="width:0%"></i></div>
-        <div class="hint" style="margin-top:8px">Exam target: first week of August</div>
+        <div class="hint" style="margin-top:8px"><span id="secSectionHint">Section —</span> · exam target: first week of August</div>
       </div>
       <div class="panel">
         <div class="label">track 3 · portfolio</div>
@@ -471,13 +480,15 @@
       <table class="weeks" id="weeksTable">
         <thead>
           <tr>
-            <th style="width:60px">Wk</th>
-            <th style="width:160px">Dates</th>
+            <th style="width:54px">Wk</th>
+            <th style="width:130px">Dates</th>
             <th>Pen Test goal</th>
             <th>Security+</th>
             <th>Project</th>
-            <th style="width:90px">Milestone</th>
-            <th style="width:80px">Rest day</th>
+            <th style="width:90px" title="Hours logged in this week (Messer + Notes + TryHackMe)">Hours</th>
+            <th style="width:110px" title="Cumulative pen-test hours vs the plan's target for that week">vs target</th>
+            <th style="width:90px" title="Active days vs days that have actually passed in this week">Days</th>
+            <th style="width:120px">Status</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -810,9 +821,10 @@ function renderDashboard(){
   $("#thmHours").textContent = thm.toFixed(1);
   $("#thmBar").style.width = clamp(thm/92*100,0,100) + "%";
 
-  const sec = sectionsCompleted();
-  $("#secSections").textContent = sec;
-  $("#secBar").style.width = clamp(sec/5*100,0,100) + "%";
+  const messerHrs = messerHoursLogged();
+  $("#secHours").textContent = messerHrs.toFixed(1);
+  $("#secBar").style.width = clamp(messerHrs/15*100,0,100) + "%";
+  $("#secSectionHint").textContent = "Section " + currentSecPlusSection() + " of 5";
 
   const proj = projectHours();
   $("#projHours").textContent = proj.toFixed(1);
@@ -866,13 +878,25 @@ function computeTHMHours(){
   }
   return h;
 }
-function sectionsCompleted(){
-  // mark a section done when its corresponding week's "milestone" checkbox is ticked
-  // weeks 1..5 each correspond to sections 1..5 starts; section is "done" once that week's box is checked
-  // simpler heuristic: count weeks 1-7 with milestone checked, cap at 5
-  let n=0;
-  for (let w=1; w<=7; w++) if (state.weekly[w]?.milestone) n++;
-  return Math.min(n, 5);
+function messerHoursLogged(){
+  // each day with messer.done counts as 1 hr (per plan)
+  let h=0;
+  for (const d in state.daily){
+    if (state.daily[d].messer?.done) h += 1;
+  }
+  return h;
+}
+function currentSecPlusSection(){
+  // Section breakdown by cumulative Messer hours (Professor Messer SY0-701 sections):
+  // S1 ≈ 1.5h, S2 ≈ 4.5h cum, S3 ≈ 7.5h cum, S4 ≈ 11.5h cum, S5 ≈ 15h cum
+  const h = messerHoursLogged();
+  if (h >= 15)   return "5 · done";
+  if (h >= 11.5) return 5;
+  if (h >= 7.5)  return 4;
+  if (h >= 4.5)  return 3;
+  if (h >= 1.5)  return 2;
+  if (h > 0)     return 1;
+  return "1 · not started";
 }
 function projectHours(){
   // hours logged in weeks 11-14
@@ -972,6 +996,69 @@ function bindTodayInputs(){
 }
 
 // ---------- VIEW: WEEKS ----------
+function eachDateInRange(start, end, cb){
+  const s = parseDate(start), e = parseDate(end);
+  for (let d = new Date(s); d <= e; d.setDate(d.getDate()+1)){
+    cb(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
+  }
+}
+
+function weekStats(w){
+  const today = todayStr();
+  let weekHours = 0, weekTHM = 0, activeDays = 0, elapsedDays = 0;
+  eachDateInRange(w.start, w.end, ds=>{
+    const isPastOrToday = ds <= today;
+    if (isPastOrToday) elapsedDays++;
+    const e = state.daily[ds];
+    if (!e) return;
+    const h = dayHours(ds);
+    if (isPastOrToday) weekHours += h;
+    if (e.tryHackMe?.done && isPastOrToday) weekTHM += Number(e.tryHackMe.hours)||0;
+    if (isPastOrToday && isDayActive(ds)) activeDays++;
+  });
+  // cumulative THM hours through end of this week (only counting past/today)
+  let cumTHM = 0;
+  for (const ds in state.daily){
+    if (ds <= today && ds <= w.end){
+      const e = state.daily[ds];
+      if (e.tryHackMe?.done) cumTHM += Number(e.tryHackMe.hours)||0;
+    }
+  }
+  return { weekHours, weekTHM, activeDays, elapsedDays, cumTHM };
+}
+
+function weekStatus(w, st){
+  const today = todayStr();
+  // future
+  if (w.start > today) return { cls:"pill", text:"upcoming" };
+  // currently running
+  if (today >= w.start && today <= w.end){
+    if (w.thm){
+      // partial target = proportional to days elapsed in week
+      const totalDays = daysBetween(w.start, w.end) + 1;
+      const fraction = st.elapsedDays / totalDays;
+      const target = (w.wk===1 ? w.thm : (w.thm - WEEKS[w.wk-2].thm));
+      const expectedCum = (w.wk===1 ? 0 : WEEKS[w.wk-2].thm) + target * fraction;
+      if (st.cumTHM >= expectedCum - 0.5) return { cls:"pill good", text:"✓ on pace" };
+      if (st.cumTHM >= expectedCum - 4) return { cls:"pill warn", text:"→ catching up" };
+      return { cls:"pill bad", text:"⚠ behind" };
+    }
+    if (st.activeDays > 0) return { cls:"pill cyan", text:"→ in progress" };
+    return { cls:"pill warn", text:"→ not started" };
+  }
+  // past
+  if (w.thm){
+    if (st.cumTHM >= w.thm) return { cls:"pill good", text:"✓ hit target" };
+    const gap = w.thm - st.cumTHM;
+    if (gap <= 4) return { cls:"pill warn", text:`− ${gap.toFixed(1)}h short` };
+    return { cls:"pill bad", text:`✗ ${gap.toFixed(1)}h short` };
+  }
+  if (st.activeDays >= 4) return { cls:"pill good", text:"✓ solid week" };
+  if (st.activeDays >= 2) return { cls:"pill warn", text:"~ light week" };
+  if (st.activeDays === 0) return { cls:"pill", text:"— rest week" };
+  return { cls:"pill warn", text:`${st.activeDays}/${st.elapsedDays} days` };
+}
+
 function renderWeeks(){
   const tbody = $("#weeksTable tbody"); tbody.innerHTML = "";
   const today = todayStr();
@@ -981,32 +1068,49 @@ function renderWeeks(){
     const tr = document.createElement("tr");
     const isNow = w.wk === currentWk;
     const isPast = !isNow && today > w.end;
+    const isFuture = today < w.start;
     if (isNow) tr.classList.add("now");
     if (isPast) tr.classList.add("past");
 
-    const wkState = state.weekly[w.wk] || {milestone:false, restDay:false};
+    const st = weekStats(w);
+    const status = weekStatus(w, st);
+
+    // hours cell
+    let hoursCell = `<span class="num">${st.weekHours.toFixed(1)}<small>h</small></span>`;
+    if (isFuture) hoursCell = `<span class="muted">—</span>`;
+
+    // vs target cell
+    let targetCell;
+    if (w.thm){
+      const target = w.thm;
+      let cls = "good";
+      if (isFuture) { targetCell = `<span class="muted">${target}h</span>`; }
+      else {
+        if (st.cumTHM < target) cls = isPast ? "bad" : "warn";
+        targetCell = `<span class="num ${cls}">${st.cumTHM.toFixed(1)}<small>/ ${target}h</small></span>`;
+      }
+    } else {
+      targetCell = `<span class="muted">—</span>`;
+    }
+
+    // days cell
+    const totalWeekDays = daysBetween(w.start, w.end) + 1;
+    const denom = isFuture ? totalWeekDays : (isPast ? totalWeekDays : st.elapsedDays);
+    let daysCell = `<span class="num">${st.activeDays}<small>/ ${denom} ${isPast?'days':isNow?'so far':'days'}</small></span>`;
+    if (isFuture) daysCell = `<span class="muted">—</span>`;
 
     tr.innerHTML = `
       <td><b>${w.wk}</b> ${isNow?'<span class="pill now">now</span>':''}</td>
-      <td>${fmtDate(w.start)} – ${fmtDate(w.end)}</td>
+      <td class="mono" style="font-size:12px">${fmtDate(w.start)} – ${fmtDate(w.end)}</td>
       <td>${w.thmDesc}</td>
       <td>${w.sec}</td>
-      <td>${w.proj || '—'}</td>
-      <td><input type="checkbox" data-wk="${w.wk}" data-field="milestone" ${wkState.milestone?"checked":""}></td>
-      <td><input type="checkbox" data-wk="${w.wk}" data-field="restDay" ${wkState.restDay?"checked":""}></td>
+      <td>${w.proj || '<span class="muted">—</span>'}</td>
+      <td>${hoursCell}</td>
+      <td>${targetCell}</td>
+      <td>${daysCell}</td>
+      <td><span class="${status.cls}">${status.text}</span></td>
     `;
     tbody.appendChild(tr);
-  });
-
-  tbody.querySelectorAll("input[type=checkbox]").forEach(cb=>{
-    cb.addEventListener("change", e=>{
-      const wk = e.target.dataset.wk;
-      const f = e.target.dataset.field;
-      if (!state.weekly[wk]) state.weekly[wk] = {milestone:false, restDay:false};
-      state.weekly[wk][f] = e.target.checked;
-      saveLocal();
-      renderDashboard();
-    });
   });
 }
 
