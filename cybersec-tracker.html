@@ -1,0 +1,1138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>cybersec_path.exe — Summer 2026</title>
+<style>
+  :root{
+    --bg:#0a0f0a;
+    --bg-2:#0f1610;
+    --panel:#111a12;
+    --panel-2:#152017;
+    --border:#1f3a26;
+    --border-2:#2a4f33;
+    --text:#cfeacd;
+    --muted:#6c8a73;
+    --dim:#3e5a45;
+    --accent:#00ff88;
+    --accent-2:#00d9ff;
+    --warn:#ffcc44;
+    --bad:#ff5555;
+    --good:#00ff88;
+    --mono:'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  body{
+    background:
+      radial-gradient(1200px 600px at 90% -10%, rgba(0,255,136,.06), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(0,217,255,.04), transparent 60%),
+      var(--bg);
+    min-height:100vh;
+    line-height:1.5;
+  }
+  a{color:var(--accent-2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,kbd{font-family:var(--mono)}
+
+  /* TOP BAR */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 24px;border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,#0d150e,#0a0f0a);
+    position:sticky;top:0;z-index:50;
+    backdrop-filter: blur(6px);
+  }
+  .brand{font-family:var(--mono);font-weight:700;letter-spacing:.5px}
+  .brand .prompt{color:var(--accent)}
+  .brand .name{color:var(--text)}
+  .brand .cursor{color:var(--accent);animation:blink 1s steps(2,start) infinite}
+  @keyframes blink{to{visibility:hidden}}
+
+  .sync{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .sync .dot{width:9px;height:9px;border-radius:50%;background:var(--dim);box-shadow:0 0 0 2px rgba(0,0,0,.4)}
+  .sync.synced .dot{background:var(--good);box-shadow:0 0 8px var(--good)}
+  .sync.syncing .dot{background:var(--accent-2);animation:pulse 1s infinite}
+  .sync.offline .dot{background:var(--muted)}
+  .sync.error .dot{background:var(--bad);box-shadow:0 0 8px var(--bad)}
+  @keyframes pulse{50%{opacity:.4}}
+
+  /* NAV */
+  nav.tabs{
+    display:flex;gap:4px;padding:8px 16px;border-bottom:1px solid var(--border);
+    background:var(--bg-2);overflow-x:auto;
+  }
+  nav.tabs button{
+    background:transparent;color:var(--muted);border:1px solid transparent;
+    padding:8px 14px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:13px;
+    letter-spacing:.3px;transition:all .15s;
+  }
+  nav.tabs button:hover{color:var(--text);background:var(--panel)}
+  nav.tabs button.active{
+    color:var(--accent);background:var(--panel);
+    border-color:var(--border-2);
+    box-shadow:0 0 0 1px rgba(0,255,136,.1) inset, 0 0 12px rgba(0,255,136,.08);
+  }
+
+  /* MAIN */
+  main{max-width:1180px;margin:0 auto;padding:24px}
+  section.view{display:none}
+  section.view.active{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  h1{font-family:var(--mono);font-size:20px;margin:0 0 4px;color:var(--text);font-weight:700}
+  h1 .accent{color:var(--accent)}
+  h2{font-family:var(--mono);font-size:14px;margin:0 0 12px;color:var(--accent);letter-spacing:.5px;text-transform:uppercase}
+  h2::before{content:"// ";color:var(--dim)}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:24px;font-family:var(--mono)}
+
+  /* PANELS */
+  .grid{display:grid;gap:16px}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+  .grid.cols-2{grid-template-columns:1fr 1fr}
+  .grid.cols-4{grid-template-columns:repeat(4,1fr)}
+  @media (max-width:780px){
+    .grid.cols-3,.grid.cols-2,.grid.cols-4{grid-template-columns:1fr}
+  }
+  .panel{
+    background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px;
+    box-shadow:0 1px 0 rgba(0,255,136,.04) inset;
+  }
+  .panel.tight{padding:14px}
+  .panel .label{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
+  .panel .stat{font-family:var(--mono);font-size:28px;color:var(--text);font-weight:700;margin-top:4px}
+  .panel .stat .unit{color:var(--muted);font-size:14px;font-weight:400;margin-left:4px}
+  .panel .stat.accent{color:var(--accent)}
+  .panel .stat.cyan{color:var(--accent-2)}
+
+  /* PROGRESS BAR */
+  .bar{height:10px;border-radius:6px;background:#0a140d;border:1px solid var(--border);overflow:hidden;position:relative}
+  .bar > i{
+    display:block;height:100%;
+    background:linear-gradient(90deg,var(--accent),var(--accent-2));
+    box-shadow:0 0 12px rgba(0,255,136,.3);
+    transition:width .4s ease;
+  }
+  .bar-label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:6px}
+  .bar-label b{color:var(--text);font-weight:600}
+
+  /* CHECKLIST */
+  .check{
+    display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid var(--border);
+    border-radius:8px;background:var(--panel-2);margin-bottom:10px;transition:all .15s;
+  }
+  .check:hover{border-color:var(--border-2)}
+  .check.done{border-color:rgba(0,255,136,.35);background:rgba(0,255,136,.04)}
+  .check input[type=checkbox]{
+    width:18px;height:18px;margin-top:3px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;
+  }
+  .check .body{flex:1;min-width:0}
+  .check .title{font-family:var(--mono);font-weight:600;font-size:13px;color:var(--text);letter-spacing:.3px}
+  .check .meta{font-size:12px;color:var(--muted);margin-top:2px;font-family:var(--mono)}
+  .check input[type=text], .check input[type=number]{
+    width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);
+    padding:7px 10px;border-radius:6px;font-family:var(--mono);font-size:12px;
+  }
+  .check input[type=text]:focus, .check input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,255,136,.15)}
+  .check input[type=number]{width:90px}
+  .check .row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+  .check .row span{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+  /* WEEKS TABLE */
+  table.weeks{width:100%;border-collapse:separate;border-spacing:0;font-family:var(--mono);font-size:13px}
+  table.weeks th{
+    text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);
+    color:var(--muted);font-weight:500;font-size:11px;letter-spacing:.5px;text-transform:uppercase;
+  }
+  table.weeks td{padding:12px;border-bottom:1px solid var(--border);vertical-align:middle}
+  table.weeks tr.now{background:rgba(0,255,136,.05)}
+  table.weeks tr.now td:first-child{border-left:2px solid var(--accent)}
+  table.weeks tr.past td{color:var(--muted)}
+  table.weeks .pill{
+    display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;
+    background:var(--panel-2);border:1px solid var(--border);color:var(--muted);
+  }
+  table.weeks .pill.now{background:rgba(0,255,136,.1);color:var(--accent);border-color:rgba(0,255,136,.3)}
+  table.weeks input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
+  .weeks-wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--border);border-radius:10px}
+
+  /* HEATMAP */
+  .heatmap{
+    display:grid;grid-template-columns:repeat(14, 1fr);gap:5px;
+    padding:14px;background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  }
+  .heatcol{display:grid;grid-template-rows:repeat(7,1fr);gap:5px}
+  .heatcol .col-label{font-family:var(--mono);font-size:9px;color:var(--dim);text-align:center;margin-bottom:2px;grid-column:1/-1}
+  .heatcell{
+    aspect-ratio:1/1;background:#0c130d;border-radius:3px;border:1px solid rgba(31,58,38,.6);
+    cursor:pointer;transition:transform .1s;position:relative;
+  }
+  .heatcell:hover{transform:scale(1.25);z-index:2;border-color:var(--accent)}
+  .heatcell.l1{background:rgba(0,255,136,.12)}
+  .heatcell.l2{background:rgba(0,255,136,.28)}
+  .heatcell.l3{background:rgba(0,255,136,.5)}
+  .heatcell.l4{background:rgba(0,255,136,.78)}
+  .heatcell.future{background:#0a100b;border-color:var(--border)}
+  .heatcell.today{box-shadow:0 0 0 2px var(--accent-2)}
+  .heat-legend{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .heat-legend i{width:12px;height:12px;border-radius:2px;display:inline-block;background:#0c130d;border:1px solid rgba(31,58,38,.6)}
+
+  /* PHASE MILESTONES */
+  .phase{
+    display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--border);
+    border-radius:8px;background:var(--panel-2);margin-bottom:10px;
+  }
+  .phase.done{border-color:rgba(0,255,136,.4);background:rgba(0,255,136,.05)}
+  .phase .icon{
+    width:36px;height:36px;border-radius:8px;display:grid;place-items:center;font-family:var(--mono);
+    background:var(--bg);border:1px solid var(--border);color:var(--muted);font-size:18px;
+  }
+  .phase.done .icon{background:rgba(0,255,136,.1);border-color:rgba(0,255,136,.4);color:var(--accent)}
+  .phase .body{flex:1}
+  .phase .title{font-family:var(--mono);font-weight:600;color:var(--text);font-size:14px}
+  .phase .desc{font-size:12px;color:var(--muted);margin-top:2px}
+  .phase input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent);cursor:pointer}
+
+  /* BUTTONS */
+  button.btn, .btn{
+    background:var(--panel);color:var(--text);border:1px solid var(--border-2);
+    padding:9px 16px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:12px;
+    transition:all .15s;letter-spacing:.3px;
+  }
+  button.btn:hover{background:var(--panel-2);border-color:var(--accent);color:var(--accent)}
+  button.btn.primary{background:rgba(0,255,136,.1);border-color:var(--accent);color:var(--accent)}
+  button.btn.primary:hover{background:rgba(0,255,136,.2)}
+  button.btn.ghost{background:transparent;border-color:var(--border);color:var(--muted)}
+  button.btn.danger{border-color:rgba(255,85,85,.4);color:var(--bad)}
+  button.btn.danger:hover{background:rgba(255,85,85,.08)}
+
+  /* FORM */
+  label.field{display:block;margin-bottom:14px}
+  label.field .lbl{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+  label.field input, label.field select, label.field textarea{
+    width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
+    padding:10px 12px;border-radius:6px;font-family:var(--mono);font-size:13px;
+  }
+  label.field input:focus, label.field textarea:focus, label.field select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,255,136,.15)}
+  .hint{font-size:12px;color:var(--muted);margin-top:4px;font-family:var(--mono);line-height:1.55}
+  .hint code{background:var(--panel-2);padding:1px 6px;border-radius:4px;color:var(--accent-2);border:1px solid var(--border)}
+
+  /* TOAST */
+  .toast{
+    position:fixed;bottom:24px;right:24px;background:var(--panel);border:1px solid var(--border-2);
+    border-radius:8px;padding:12px 16px;font-family:var(--mono);font-size:13px;color:var(--text);
+    box-shadow:0 8px 24px rgba(0,0,0,.4);transform:translateY(80px);opacity:0;transition:all .25s;z-index:200;
+  }
+  .toast.show{transform:none;opacity:1}
+  .toast.error{border-color:var(--bad);color:var(--bad)}
+  .toast.success{border-color:var(--accent);color:var(--accent)}
+
+  /* SMALL UTILS */
+  .row-between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .gap{height:20px}
+  .divider{height:1px;background:var(--border);margin:20px 0}
+  .mono{font-family:var(--mono)}
+  .muted{color:var(--muted)}
+  .accent-text{color:var(--accent)}
+  .center{text-align:center}
+  details summary{cursor:pointer;color:var(--muted);font-family:var(--mono);font-size:13px;padding:6px 0}
+  details summary:hover{color:var(--text)}
+  details[open] summary{color:var(--accent)}
+
+  /* tooltip */
+  .heatcell[data-tip]:hover::after{
+    content:attr(data-tip);position:absolute;bottom:120%;left:50%;transform:translateX(-50%);
+    background:#000;color:var(--text);padding:6px 10px;border-radius:4px;font-family:var(--mono);
+    font-size:11px;white-space:nowrap;border:1px solid var(--border-2);z-index:10;pointer-events:none;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="prompt">&gt;</span>
+    <span class="name">cybersec_path</span><span class="muted">.exe</span>
+    <span class="cursor">_</span>
+  </div>
+  <div class="sync offline" id="syncIndicator" title="Sync status">
+    <span class="dot"></span>
+    <span id="syncText">local only</span>
+  </div>
+</div>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="dashboard" class="active">[ dashboard ]</button>
+  <button data-tab="today">[ today ]</button>
+  <button data-tab="weeks">[ weeks ]</button>
+  <button data-tab="calendar">[ calendar ]</button>
+  <button data-tab="settings">[ settings ]</button>
+</nav>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <section class="view active" id="view-dashboard">
+    <h1><span class="accent">$</span> Summer 2026 — Cybersec Prep</h1>
+    <div class="sub" id="dashSub">May 27 – Aug 31 · 14 weeks · 3 tracks</div>
+
+    <div class="grid cols-4">
+      <div class="panel">
+        <div class="label">day of summer</div>
+        <div class="stat accent"><span id="dayOf">—</span><span class="unit" id="dayOfTotal">/ 97</span></div>
+      </div>
+      <div class="panel">
+        <div class="label">days remaining</div>
+        <div class="stat cyan"><span id="daysLeft">—</span></div>
+      </div>
+      <div class="panel">
+        <div class="label">current streak</div>
+        <div class="stat accent"><span id="streak">0</span><span class="unit">days</span></div>
+      </div>
+      <div class="panel">
+        <div class="label">hours logged total</div>
+        <div class="stat"><span id="totalHours">0</span><span class="unit">hrs</span></div>
+      </div>
+    </div>
+
+    <div class="gap"></div>
+
+    <h2>tracks</h2>
+    <div class="grid cols-3">
+      <div class="panel">
+        <div class="label">track 1 · tryhackme</div>
+        <div class="bar-label" style="margin-top:8px"><span>Pen Test Path</span><b><span id="thmHours">0</span> / 92 hrs</b></div>
+        <div class="bar"><i id="thmBar" style="width:0%"></i></div>
+        <div class="hint" style="margin-top:8px">Target: complete mid–late July</div>
+      </div>
+      <div class="panel">
+        <div class="label">track 2 · security+</div>
+        <div class="bar-label" style="margin-top:8px"><span>SY0-701 Sections</span><b><span id="secSections">0</span> / 5</b></div>
+        <div class="bar"><i id="secBar" style="width:0%"></i></div>
+        <div class="hint" style="margin-top:8px">Exam target: first week of August</div>
+      </div>
+      <div class="panel">
+        <div class="label">track 3 · portfolio</div>
+        <div class="bar-label" style="margin-top:8px"><span>Encrypted chat rebuild</span><b><span id="projHours">0</span> / 30 hrs</b></div>
+        <div class="bar"><i id="projBar" style="width:0%"></i></div>
+        <div class="hint" style="margin-top:8px">Starts after Sec+ pass (~Aug 5)</div>
+      </div>
+    </div>
+
+    <div class="gap"></div>
+
+    <h2>this week</h2>
+    <div class="panel" id="thisWeekPanel">
+      <div id="thisWeekBody" class="mono" style="font-size:13px;color:var(--muted)">—</div>
+    </div>
+
+    <div class="gap"></div>
+
+    <h2>phase milestones</h2>
+    <div id="phaseList"></div>
+  </section>
+
+  <!-- TODAY -->
+  <section class="view" id="view-today">
+    <div class="row-between">
+      <div>
+        <h1><span class="accent">$</span> Today</h1>
+        <div class="sub" id="todayDate">—</div>
+      </div>
+      <div>
+        <label class="mono" style="font-size:12px;color:var(--muted)">Date:
+          <input type="date" id="todayPicker" style="background:var(--bg);color:var(--text);border:1px solid var(--border);padding:6px 8px;border-radius:6px;font-family:var(--mono);margin-left:6px">
+        </label>
+      </div>
+    </div>
+
+    <h2>daily checklist</h2>
+    <div class="check" data-task="messer">
+      <input type="checkbox" data-field="done">
+      <div class="body">
+        <div class="title">[1 hr] Professor Messer SY0-701 video</div>
+        <div class="meta">Watch + take notes. Log section + title.</div>
+        <input type="text" data-field="title" placeholder="e.g. Section 1.2 — Threat Actors">
+      </div>
+    </div>
+
+    <div class="check" data-task="notes">
+      <input type="checkbox" data-field="done">
+      <div class="body">
+        <div class="title">[30 min] Notes + Anki flashcards</div>
+        <div class="meta">Own words, markdown/Obsidian. Log topics covered.</div>
+        <input type="text" data-field="topics" placeholder="e.g. CIA triad, AAA, zero-trust">
+      </div>
+    </div>
+
+    <div class="check" data-task="tryHackMe">
+      <input type="checkbox" data-field="done">
+      <div class="body">
+        <div class="title">[2 hrs] TryHackMe Pen Test path</div>
+        <div class="meta">Log room/box name + hours actually put in.</div>
+        <input type="text" data-field="room" placeholder="e.g. Room: Vulnversity">
+        <div class="row">
+          <span>hours:</span>
+          <input type="number" data-field="hours" min="0" max="12" step="0.5" value="2">
+        </div>
+      </div>
+    </div>
+
+    <div class="gap"></div>
+
+    <h2>day notes</h2>
+    <div class="panel tight">
+      <textarea id="dayNotes" placeholder="Anything from today — wins, blockers, things to revisit…"
+        style="width:100%;min-height:90px;background:var(--bg);color:var(--text);border:1px solid var(--border);
+               border-radius:6px;padding:10px;font-family:var(--mono);font-size:13px;resize:vertical"></textarea>
+    </div>
+
+    <div class="gap"></div>
+    <div class="row-between">
+      <div class="mono muted" id="todaySaveHint">auto-saves on change</div>
+      <button class="btn ghost" id="clearTodayBtn">clear this day</button>
+    </div>
+  </section>
+
+  <!-- WEEKS -->
+  <section class="view" id="view-weeks">
+    <h1><span class="accent">$</span> Weekly Milestones</h1>
+    <div class="sub">Track the 14-week roadmap from your plan</div>
+
+    <div class="weeks-wrap">
+      <table class="weeks" id="weeksTable">
+        <thead>
+          <tr>
+            <th style="width:60px">Wk</th>
+            <th style="width:160px">Dates</th>
+            <th>Pen Test goal</th>
+            <th>Security+</th>
+            <th>Project</th>
+            <th style="width:90px">Milestone</th>
+            <th style="width:80px">Rest day</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="gap"></div>
+    <details>
+      <summary>off-day rules (from plan)</summary>
+      <div class="panel" style="margin-top:10px;font-size:13px;line-height:1.7">
+        <ol style="margin:0;padding-left:18px;color:var(--text)">
+          <li>1 zero day/week is fine and healthy (Sundays recommended)</li>
+          <li>2–3 consecutive zero days = resume normal pace, no catch-up sprints</li>
+          <li>Travel/airport days = light mode (Messer offline + Anki on phone)</li>
+          <li>5-day vacation = full off, no guilt</li>
+          <li>After 3+ zero days: re-enter with just 30 min next day to break freeze</li>
+        </ol>
+      </div>
+    </details>
+  </section>
+
+  <!-- CALENDAR -->
+  <section class="view" id="view-calendar">
+    <h1><span class="accent">$</span> Calendar Heatmap</h1>
+    <div class="sub">Each cell = one day · color intensity = hours logged · click a cell to jump to that day</div>
+    <div class="heatmap" id="heatmap"></div>
+    <div class="heat-legend">
+      <span>less</span>
+      <i></i><i style="background:rgba(0,255,136,.12)"></i><i style="background:rgba(0,255,136,.28)"></i><i style="background:rgba(0,255,136,.5)"></i><i style="background:rgba(0,255,136,.78)"></i>
+      <span>more</span>
+    </div>
+
+    <div class="gap"></div>
+
+    <div class="grid cols-3">
+      <div class="panel">
+        <div class="label">active days</div>
+        <div class="stat accent"><span id="activeDays">0</span><span class="unit">/ <span id="elapsedDays">0</span></span></div>
+      </div>
+      <div class="panel">
+        <div class="label">longest streak</div>
+        <div class="stat cyan"><span id="longestStreak">0</span><span class="unit">days</span></div>
+      </div>
+      <div class="panel">
+        <div class="label">avg hrs / active day</div>
+        <div class="stat"><span id="avgHours">0</span><span class="unit">hrs</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="view-settings">
+    <h1><span class="accent">$</span> Settings</h1>
+    <div class="sub">GitHub Gist sync, data export, configuration</div>
+
+    <h2>github gist sync</h2>
+    <div class="panel">
+      <p class="mono muted" style="margin:0 0 14px;font-size:13px;line-height:1.6">
+        Free cloud backup using GitHub Gists. Your progress is stored as a JSON file in a secret gist
+        that only you can access. Setup is ~2 minutes.
+      </p>
+
+      <details>
+        <summary>setup instructions (click to expand)</summary>
+        <div style="padding:12px 0 4px;font-size:13px;line-height:1.7">
+          <b class="accent-text mono">Step 1 — create a Personal Access Token</b>
+          <ol class="mono" style="font-size:13px;color:var(--text);padding-left:18px;margin:6px 0 14px">
+            <li>Go to <a href="https://github.com/settings/tokens?type=beta" target="_blank">github.com/settings/tokens</a> (fine-grained tokens)</li>
+            <li>Click <code>Generate new token</code></li>
+            <li>Name it <code>cybersec-tracker</code>, expiration up to you</li>
+            <li>Under <b>Account permissions</b>, set <code>Gists: Read and write</code></li>
+            <li>No repo access needed. Click Generate, copy the token (starts with <code>github_pat_</code>)</li>
+          </ol>
+          <b class="accent-text mono">Step 2 — create a gist</b>
+          <ol class="mono" style="font-size:13px;color:var(--text);padding-left:18px;margin:6px 0 14px">
+            <li>Go to <a href="https://gist.github.com" target="_blank">gist.github.com</a></li>
+            <li>Filename: <code>cybersec-progress.json</code></li>
+            <li>Content: <code>{}</code></li>
+            <li>Click <code>Create secret gist</code></li>
+            <li>From the URL <code>gist.github.com/&lt;you&gt;/&lt;gist-id&gt;</code>, copy the <code>&lt;gist-id&gt;</code> hex string</li>
+          </ol>
+          <b class="accent-text mono">Step 3 — paste them below + click Connect</b>
+          <p class="mono" style="font-size:12px;color:var(--muted);margin:6px 0 0">
+            Token is stored only in your browser's localStorage. Never sent anywhere except api.github.com.
+          </p>
+        </div>
+      </details>
+
+      <div class="divider"></div>
+
+      <label class="field">
+        <span class="lbl">GitHub Personal Access Token</span>
+        <input type="password" id="ghToken" autocomplete="off" placeholder="github_pat_...">
+      </label>
+      <label class="field">
+        <span class="lbl">Gist ID</span>
+        <input type="text" id="ghGistId" autocomplete="off" placeholder="e.g. a1b2c3d4e5f6...">
+      </label>
+
+      <div class="row-between">
+        <div>
+          <button class="btn primary" id="connectBtn">connect & sync</button>
+          <button class="btn" id="syncNowBtn">sync now</button>
+          <button class="btn ghost" id="pullBtn">pull from cloud</button>
+          <button class="btn danger" id="disconnectBtn">disconnect</button>
+        </div>
+        <div class="mono muted" id="syncMeta">not connected</div>
+      </div>
+    </div>
+
+    <div class="gap"></div>
+
+    <h2>data</h2>
+    <div class="panel">
+      <div class="row-between">
+        <div class="mono" style="font-size:13px">
+          <div>State size: <b id="stateSize">0</b> bytes</div>
+          <div class="muted" style="margin-top:4px">Last saved locally: <span id="lastSaved">never</span></div>
+        </div>
+        <div>
+          <button class="btn" id="exportBtn">export JSON</button>
+          <button class="btn ghost" id="importBtn">import JSON</button>
+          <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+          <button class="btn danger" id="resetBtn">reset all</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="gap"></div>
+
+    <h2>plan reference</h2>
+    <div class="panel mono" style="font-size:12.5px;line-height:1.7;color:var(--text)">
+      <b class="accent-text">Goal:</b> Junior Cybersec role by graduation (Spring 2028)<br>
+      <b class="accent-text">Summer target:</b> Sec+ pass · THM Pen Test path · 1 polished portfolio project<br>
+      <b class="accent-text">Daily (active day):</b> 1h Messer · 30m notes/Anki · 2h TryHackMe = 3.5h total<br>
+      <b class="accent-text">Sec+ exam:</b> pass threshold 750/900 (~83%) · book when Dion exams ≥85%<br>
+      <b class="accent-text">Resources:</b>
+      <a href="https://www.professormesser.com/security-plus/sy0-701/sy0-701-video/sy0-701-comptia-security-plus-course/" target="_blank">Professor Messer SY0-701</a> ·
+      Jason Dion Udemy exams ·
+      <a href="https://tryhackme.com" target="_blank">TryHackMe</a>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+// ---------- CONSTANTS ----------
+const START_DATE = "2026-05-27";
+const END_DATE   = "2026-08-31";
+const STORAGE_KEY = "cybersec_path_v1";
+const SETTINGS_KEY = "cybersec_path_settings_v1";
+
+const WEEKS = [
+  { wk:1,  start:"2026-05-27", end:"2026-06-02", thm:14, thmDesc:"14 hrs (start of path)",       sec:"Section 1",                proj:"" },
+  { wk:2,  start:"2026-06-03", end:"2026-06-09", thm:28, thmDesc:"28 hrs total",                  sec:"Section 2 start",          proj:"" },
+  { wk:3,  start:"2026-06-10", end:"2026-06-16", thm:42, thmDesc:"42 hrs total",                  sec:"Section 2 done",           proj:"" },
+  { wk:4,  start:"2026-06-17", end:"2026-06-23", thm:56, thmDesc:"56 hrs total",                  sec:"Section 3 done",           proj:"" },
+  { wk:5,  start:"2026-06-24", end:"2026-06-30", thm:70, thmDesc:"70 hrs total",                  sec:"Section 4 start",          proj:"" },
+  { wk:6,  start:"2026-07-01", end:"2026-07-07", thm:84, thmDesc:"84 hrs total",                  sec:"Section 4 done",           proj:"" },
+  { wk:7,  start:"2026-07-08", end:"2026-07-14", thm:92, thmDesc:"✅ Pen Test path DONE",          sec:"Section 5 + book exam",    proj:"" },
+  { wk:8,  start:"2026-07-15", end:"2026-07-21", thm:null, thmDesc:"—",                            sec:"Practice exams",           proj:"" },
+  { wk:9,  start:"2026-07-22", end:"2026-07-28", thm:null, thmDesc:"—",                            sec:"Final review",             proj:"" },
+  { wk:10, start:"2026-07-29", end:"2026-08-04", thm:null, thmDesc:"—",                            sec:"✅ EXAM PASSED",            proj:"" },
+  { wk:11, start:"2026-08-05", end:"2026-08-11", thm:null, thmDesc:"—",                            sec:"—",                        proj:"Project rebuild — refactor + README" },
+  { wk:12, start:"2026-08-12", end:"2026-08-18", thm:null, thmDesc:"—",                            sec:"—",                        proj:"Project rebuild — tests + CI" },
+  { wk:13, start:"2026-08-19", end:"2026-08-25", thm:null, thmDesc:"—",                            sec:"—",                        proj:"Project rebuild — deploy + blog" },
+  { wk:14, start:"2026-08-26", end:"2026-08-31", thm:null, thmDesc:"—",                            sec:"—",                        proj:"✅ Project shipped" },
+];
+
+const PHASES = [
+  { id:"penTestComplete", title:"Pen Test path complete",    desc:"All 92 hrs of TryHackMe Pen Test path done" , icon:"◆"},
+  { id:"examBooked",      title:"Security+ exam booked",     desc:"Scheduled at a Pearson VUE center"          , icon:"●"},
+  { id:"examPassed",      title:"Security+ exam PASSED",     desc:"750/900 or higher on SY0-701"               , icon:"★"},
+  { id:"projectShipped",  title:"Portfolio project shipped", desc:"Encrypted chat live + README + blog post"   , icon:"▲"},
+];
+
+// ---------- STATE ----------
+const defaultState = () => ({
+  version: 1,
+  startDate: START_DATE,
+  endDate: END_DATE,
+  daily: {},        // "YYYY-MM-DD": { messer:{done,title}, notes:{done,topics}, tryHackMe:{done,room,hours}, notesText:"" }
+  weekly: {},       // "1": { milestone:false, restDay:false }
+  phases: { penTestComplete:false, examBooked:false, examPassed:false, projectShipped:false },
+  meta: { lastSaved: null }
+});
+const defaultSettings = () => ({ token:"", gistId:"", lastSync:null });
+
+let state = loadState();
+let settings = loadSettings();
+let currentDate = todayStr();
+
+// ---------- HELPERS ----------
+function $(sel, root=document){ return root.querySelector(sel); }
+function $$(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+function pad(n){ return String(n).padStart(2,"0"); }
+function todayStr(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function parseDate(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y, m-1, d); }
+function daysBetween(a,b){ return Math.round((parseDate(b) - parseDate(a)) / 86400000); }
+function fmtDate(s){ const d=parseDate(s); return d.toLocaleDateString(undefined,{month:"short",day:"numeric"}); }
+function fmtFullDate(s){ const d=parseDate(s); return d.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric",year:"numeric"}); }
+function inRange(s){ return s>=START_DATE && s<=END_DATE; }
+function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
+
+function dayEntry(date){
+  if (!state.daily[date]) state.daily[date] = { messer:{done:false,title:""}, notes:{done:false,topics:""}, tryHackMe:{done:false,room:"",hours:0}, notesText:"" };
+  return state.daily[date];
+}
+function dayHours(d){
+  const e = state.daily[d]; if (!e) return 0;
+  let h = 0;
+  if (e.tryHackMe?.done) h += Number(e.tryHackMe.hours)||0;
+  if (e.messer?.done) h += 1;
+  if (e.notes?.done) h += 0.5;
+  return h;
+}
+function isDayActive(d){ const e=state.daily[d]; return !!(e && (e.messer?.done || e.notes?.done || e.tryHackMe?.done)); }
+function weekNumberFor(date){
+  for (const w of WEEKS) if (date>=w.start && date<=w.end) return w.wk;
+  return null;
+}
+
+// ---------- PERSISTENCE ----------
+function loadState(){
+  try{ const raw=localStorage.getItem(STORAGE_KEY); if(raw){ const s=JSON.parse(raw); return Object.assign(defaultState(), s); } }catch(e){}
+  return defaultState();
+}
+function loadSettings(){
+  try{ const raw=localStorage.getItem(SETTINGS_KEY); if(raw){ return Object.assign(defaultSettings(), JSON.parse(raw)); } }catch(e){}
+  return defaultSettings();
+}
+function saveLocal(){
+  state.meta.lastSaved = new Date().toISOString();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  scheduleSync();
+}
+function saveSettings(){
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+// ---------- SYNC (GITHUB GIST) ----------
+let syncTimer = null;
+function setSyncStatus(kind, text){
+  const el = $("#syncIndicator"); el.className = "sync " + kind;
+  $("#syncText").textContent = text;
+}
+function scheduleSync(){
+  if (!settings.token || !settings.gistId) return;
+  clearTimeout(syncTimer);
+  setSyncStatus("syncing","saving…");
+  syncTimer = setTimeout(()=>pushToGist().catch(err=>{
+    console.error(err);
+    setSyncStatus("error", "sync failed");
+    toast("Sync failed: " + (err.message||err), "error");
+  }), 1500);
+}
+async function pushToGist(){
+  if (!settings.token || !settings.gistId) return;
+  setSyncStatus("syncing","saving…");
+  const body = { files: { "cybersec-progress.json": { content: JSON.stringify(state, null, 2) } } };
+  const res = await fetch(`https://api.github.com/gists/${settings.gistId}`, {
+    method: "PATCH",
+    headers: { "Authorization":`Bearer ${settings.token}`, "Accept":"application/vnd.github+json", "Content-Type":"application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok){ const t=await res.text(); throw new Error(`HTTP ${res.status} — ${t.slice(0,140)}`); }
+  settings.lastSync = new Date().toISOString();
+  saveSettings();
+  setSyncStatus("synced", "synced · " + new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}));
+  $("#syncMeta").textContent = "last sync: " + new Date(settings.lastSync).toLocaleString();
+}
+async function pullFromGist(){
+  if (!settings.token || !settings.gistId) throw new Error("Not connected");
+  setSyncStatus("syncing","pulling…");
+  const res = await fetch(`https://api.github.com/gists/${settings.gistId}`, {
+    headers: { "Authorization":`Bearer ${settings.token}`, "Accept":"application/vnd.github+json" }
+  });
+  if (!res.ok){ const t=await res.text(); throw new Error(`HTTP ${res.status} — ${t.slice(0,140)}`); }
+  const data = await res.json();
+  const file = data.files["cybersec-progress.json"] || Object.values(data.files)[0];
+  if (!file) throw new Error("No progress file in gist");
+  let content = file.content;
+  if (file.truncated && file.raw_url){
+    const r2 = await fetch(file.raw_url); content = await r2.text();
+  }
+  let parsed;
+  try { parsed = JSON.parse(content || "{}"); } catch(e){ throw new Error("Gist contains invalid JSON"); }
+  if (parsed && parsed.version){
+    state = Object.assign(defaultState(), parsed);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+  settings.lastSync = new Date().toISOString();
+  saveSettings();
+  renderAll();
+  setSyncStatus("synced", "pulled · " + new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}));
+  $("#syncMeta").textContent = "last sync: " + new Date(settings.lastSync).toLocaleString();
+  toast("Pulled latest from cloud","success");
+}
+
+// ---------- TOAST ----------
+let toastTimer;
+function toast(msg, kind=""){
+  const t = $("#toast"); t.textContent = msg; t.className = "toast show " + kind;
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=> t.className = "toast " + kind, 2400);
+}
+
+// ---------- VIEW: DASHBOARD ----------
+function renderDashboard(){
+  const total = daysBetween(START_DATE, END_DATE) + 1;
+  const today = todayStr();
+  let dayOf = daysBetween(START_DATE, today) + 1;
+  dayOf = clamp(dayOf, 0, total);
+  const left = Math.max(0, daysBetween(today, END_DATE));
+  $("#dayOf").textContent = dayOf < 0 ? 0 : dayOf;
+  $("#dayOfTotal").textContent = "/ " + total;
+  $("#daysLeft").textContent = left;
+
+  // streak + hours
+  let totalHrs = 0;
+  for (const d in state.daily) totalHrs += dayHours(d);
+  $("#totalHours").textContent = totalHrs.toFixed(1);
+  $("#streak").textContent = currentStreak();
+
+  // tracks
+  const thm = computeTHMHours();
+  $("#thmHours").textContent = thm.toFixed(1);
+  $("#thmBar").style.width = clamp(thm/92*100,0,100) + "%";
+
+  const sec = sectionsCompleted();
+  $("#secSections").textContent = sec;
+  $("#secBar").style.width = clamp(sec/5*100,0,100) + "%";
+
+  const proj = projectHours();
+  $("#projHours").textContent = proj.toFixed(1);
+  $("#projBar").style.width = clamp(proj/30*100,0,100) + "%";
+
+  // this week
+  const wk = weekNumberFor(today);
+  const body = $("#thisWeekBody");
+  if (wk){
+    const w = WEEKS.find(x=>x.wk===wk);
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;color:var(--text)">
+        <span class="muted">week ${w.wk}</span><span>${fmtDate(w.start)} – ${fmtDate(w.end)}</span>
+        <span class="muted">pen test</span><span>${w.thmDesc}</span>
+        <span class="muted">security+</span><span>${w.sec}</span>
+        ${w.proj?`<span class="muted">project</span><span>${w.proj}</span>`:""}
+      </div>`;
+  } else {
+    body.textContent = today < START_DATE ? "Plan hasn't started yet — see you May 27!" : "Plan complete. Great work.";
+  }
+
+  // phase milestones
+  const list = $("#phaseList"); list.innerHTML = "";
+  PHASES.forEach(p=>{
+    const done = !!state.phases[p.id];
+    const row = document.createElement("label");
+    row.className = "phase" + (done?" done":"");
+    row.innerHTML = `
+      <div class="icon">${p.icon}</div>
+      <div class="body">
+        <div class="title">${p.title}</div>
+        <div class="desc">${p.desc}</div>
+      </div>
+      <input type="checkbox" ${done?"checked":""}>
+    `;
+    row.querySelector("input").addEventListener("change", e=>{
+      state.phases[p.id] = e.target.checked;
+      if (e.target.checked) toast("🎉 " + p.title);
+      saveLocal();
+      renderAll();
+    });
+    list.appendChild(row);
+  });
+}
+
+function computeTHMHours(){
+  let h=0;
+  for (const d in state.daily){
+    const e = state.daily[d];
+    if (e.tryHackMe?.done) h += Number(e.tryHackMe.hours)||0;
+  }
+  return h;
+}
+function sectionsCompleted(){
+  // mark a section done when its corresponding week's "milestone" checkbox is ticked
+  // weeks 1..5 each correspond to sections 1..5 starts; section is "done" once that week's box is checked
+  // simpler heuristic: count weeks 1-7 with milestone checked, cap at 5
+  let n=0;
+  for (let w=1; w<=7; w++) if (state.weekly[w]?.milestone) n++;
+  return Math.min(n, 5);
+}
+function projectHours(){
+  // hours logged in weeks 11-14
+  let h=0;
+  for (const d in state.daily){
+    if (d>="2026-08-05" && d<="2026-08-31"){
+      h += dayHours(d);
+    }
+  }
+  return h;
+}
+function currentStreak(){
+  let streak = 0;
+  const today = todayStr();
+  let cursor = today;
+  // only count active days going backwards from today (or last active day)
+  while (cursor >= START_DATE){
+    if (isDayActive(cursor)){ streak++; }
+    else if (cursor === today){
+      // today not done yet — check yesterday
+    } else break;
+    // step back one day
+    const d = parseDate(cursor); d.setDate(d.getDate()-1);
+    cursor = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+  return streak;
+}
+function longestStreak(){
+  let best=0, run=0;
+  const total = daysBetween(START_DATE, END_DATE);
+  for (let i=0;i<=total;i++){
+    const d = parseDate(START_DATE); d.setDate(d.getDate()+i);
+    const s = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    if (isDayActive(s)){ run++; best=Math.max(best,run); } else run=0;
+  }
+  return best;
+}
+
+// ---------- VIEW: TODAY ----------
+function renderToday(){
+  $("#todayPicker").value = currentDate;
+  $("#todayPicker").min = START_DATE;
+  $("#todayPicker").max = END_DATE;
+  $("#todayDate").textContent = fmtFullDate(currentDate) + (currentDate===todayStr() ? "  ·  today" : "");
+
+  const e = dayEntry(currentDate);
+  $$(".check").forEach(card=>{
+    const task = card.dataset.task;
+    card.classList.toggle("done", !!e[task]?.done);
+    card.querySelector('[data-field="done"]').checked = !!e[task]?.done;
+    const textInput = card.querySelector('input[type="text"]');
+    if (textInput){
+      const field = textInput.dataset.field;
+      textInput.value = e[task]?.[field] || "";
+    }
+    const hoursInput = card.querySelector('input[type="number"]');
+    if (hoursInput){
+      hoursInput.value = e[task]?.hours ?? 2;
+    }
+  });
+  $("#dayNotes").value = e.notesText || "";
+}
+
+function bindTodayInputs(){
+  $$(".check").forEach(card=>{
+    const task = card.dataset.task;
+    card.querySelectorAll("input,textarea").forEach(inp=>{
+      const evt = inp.type==="checkbox" ? "change" : "input";
+      inp.addEventListener(evt, ()=>{
+        const e = dayEntry(currentDate);
+        const field = inp.dataset.field;
+        if (inp.type==="checkbox") e[task][field] = inp.checked;
+        else if (inp.type==="number") e[task][field] = Number(inp.value)||0;
+        else e[task][field] = inp.value;
+        card.classList.toggle("done", !!e[task].done);
+        saveLocal();
+        // light update for stats without full re-render of forms
+        renderDashboard(); renderHeatmap(); renderWeeks();
+      });
+    });
+  });
+  $("#dayNotes").addEventListener("input", e=>{
+    dayEntry(currentDate).notesText = e.target.value;
+    saveLocal();
+  });
+  $("#todayPicker").addEventListener("change", e=>{
+    currentDate = e.target.value;
+    renderToday();
+  });
+  $("#clearTodayBtn").addEventListener("click", ()=>{
+    if (!confirm("Clear all data for " + currentDate + "?")) return;
+    delete state.daily[currentDate];
+    saveLocal();
+    renderAll();
+    toast("Cleared " + currentDate);
+  });
+}
+
+// ---------- VIEW: WEEKS ----------
+function renderWeeks(){
+  const tbody = $("#weeksTable tbody"); tbody.innerHTML = "";
+  const today = todayStr();
+  const currentWk = weekNumberFor(today);
+
+  WEEKS.forEach(w=>{
+    const tr = document.createElement("tr");
+    const isNow = w.wk === currentWk;
+    const isPast = !isNow && today > w.end;
+    if (isNow) tr.classList.add("now");
+    if (isPast) tr.classList.add("past");
+
+    const wkState = state.weekly[w.wk] || {milestone:false, restDay:false};
+
+    tr.innerHTML = `
+      <td><b>${w.wk}</b> ${isNow?'<span class="pill now">now</span>':''}</td>
+      <td>${fmtDate(w.start)} – ${fmtDate(w.end)}</td>
+      <td>${w.thmDesc}</td>
+      <td>${w.sec}</td>
+      <td>${w.proj || '—'}</td>
+      <td><input type="checkbox" data-wk="${w.wk}" data-field="milestone" ${wkState.milestone?"checked":""}></td>
+      <td><input type="checkbox" data-wk="${w.wk}" data-field="restDay" ${wkState.restDay?"checked":""}></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll("input[type=checkbox]").forEach(cb=>{
+    cb.addEventListener("change", e=>{
+      const wk = e.target.dataset.wk;
+      const f = e.target.dataset.field;
+      if (!state.weekly[wk]) state.weekly[wk] = {milestone:false, restDay:false};
+      state.weekly[wk][f] = e.target.checked;
+      saveLocal();
+      renderDashboard();
+    });
+  });
+}
+
+// ---------- VIEW: HEATMAP ----------
+function renderHeatmap(){
+  const map = $("#heatmap"); map.innerHTML = "";
+  // 14 columns (weeks), 7 rows (days starting Wed since May 27 2026 is a Wed)
+  // Easier: 14 columns Mon-Sun grid, with cells for the dates in each week's span.
+  // We'll just show 14 columns × 7 days each, mapped by date.
+  const startWk1 = parseDate("2026-05-27"); // Wednesday
+  // align grid so days-of-week are visual rows. Week 1 starts Wed.
+  // We'll build 14 columns where each column lists 7 calendar days from week start to end
+  // (some weeks 6 days because last partial week).
+  // To keep it simple: just iterate weeks and pad with blanks.
+
+  WEEKS.forEach(w=>{
+    const col = document.createElement("div"); col.className="heatcol";
+    const start = parseDate(w.start);
+    const end = parseDate(w.end);
+    const len = Math.round((end-start)/86400000)+1;
+    const label = document.createElement("div");
+    label.className="col-label";
+    label.textContent = "W"+w.wk;
+    col.appendChild(label);
+    for (let i=0;i<7;i++){
+      const cell = document.createElement("div");
+      cell.className = "heatcell";
+      if (i < len){
+        const d = new Date(start); d.setDate(start.getDate()+i);
+        const ds = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+        const h = dayHours(ds);
+        const lvl = h>=4?4 : h>=2.5?3 : h>=1?2 : h>0?1 : 0;
+        if (lvl>0) cell.classList.add("l"+lvl);
+        if (ds > todayStr()) cell.classList.add("future");
+        if (ds === todayStr()) cell.classList.add("today");
+        cell.setAttribute("data-tip", `${fmtDate(ds)} · ${h.toFixed(1)}h`);
+        cell.addEventListener("click", ()=>{
+          currentDate = ds;
+          switchTab("today");
+        });
+      } else {
+        cell.style.visibility="hidden";
+      }
+      col.appendChild(cell);
+    }
+    map.appendChild(col);
+  });
+
+  // stats
+  const today = todayStr();
+  const elapsed = clamp(daysBetween(START_DATE, today) + 1, 0, daysBetween(START_DATE, END_DATE)+1);
+  let active=0, hours=0;
+  for (const d in state.daily){
+    if (d <= today && isDayActive(d)){ active++; hours += dayHours(d); }
+  }
+  $("#activeDays").textContent = active;
+  $("#elapsedDays").textContent = elapsed;
+  $("#longestStreak").textContent = longestStreak();
+  $("#avgHours").textContent = active? (hours/active).toFixed(1) : "0";
+}
+
+// ---------- VIEW: SETTINGS ----------
+function renderSettings(){
+  $("#ghToken").value = settings.token || "";
+  $("#ghGistId").value = settings.gistId || "";
+  $("#stateSize").textContent = new Blob([JSON.stringify(state)]).size.toLocaleString();
+  $("#lastSaved").textContent = state.meta.lastSaved ? new Date(state.meta.lastSaved).toLocaleString() : "never";
+  if (settings.token && settings.gistId){
+    $("#syncMeta").textContent = settings.lastSync ? "last sync: " + new Date(settings.lastSync).toLocaleString() : "connected, never synced";
+  } else {
+    $("#syncMeta").textContent = "not connected";
+  }
+}
+
+function bindSettings(){
+  $("#connectBtn").addEventListener("click", async ()=>{
+    settings.token = $("#ghToken").value.trim();
+    settings.gistId = $("#ghGistId").value.trim();
+    if (!settings.token || !settings.gistId){ toast("Need both token and gist ID","error"); return; }
+    saveSettings();
+    try{
+      // verify access by GET first
+      const res = await fetch(`https://api.github.com/gists/${settings.gistId}`, {
+        headers: { "Authorization":`Bearer ${settings.token}`, "Accept":"application/vnd.github+json" }
+      });
+      if (!res.ok){ const t=await res.text(); throw new Error(`HTTP ${res.status} — ${t.slice(0,140)}`); }
+      const data = await res.json();
+      const file = data.files["cybersec-progress.json"] || Object.values(data.files)[0];
+      const content = file ? (file.content||"").trim() : "";
+      const remoteHasData = content && content !== "{}" && content !== "";
+
+      if (remoteHasData){
+        if (confirm("This gist already contains data. Pull it down and overwrite local? (Cancel = push local data to cloud instead)")){
+          await pullFromGist();
+        } else {
+          await pushToGist();
+        }
+      } else {
+        await pushToGist();
+      }
+      toast("Connected & synced","success");
+      renderSettings();
+    }catch(err){
+      setSyncStatus("error","connect failed");
+      toast("Connect failed: " + err.message, "error");
+    }
+  });
+  $("#syncNowBtn").addEventListener("click", async ()=>{
+    try{ await pushToGist(); toast("Synced","success"); renderSettings(); }
+    catch(err){ toast("Sync failed: "+err.message,"error"); }
+  });
+  $("#pullBtn").addEventListener("click", async ()=>{
+    if (!confirm("Pull from cloud will overwrite local data. Continue?")) return;
+    try{ await pullFromGist(); renderSettings(); }
+    catch(err){ toast("Pull failed: "+err.message,"error"); }
+  });
+  $("#disconnectBtn").addEventListener("click", ()=>{
+    if (!confirm("Disconnect? Local data stays intact.")) return;
+    settings = defaultSettings(); saveSettings();
+    setSyncStatus("offline","local only");
+    renderSettings();
+    toast("Disconnected");
+  });
+  $("#exportBtn").addEventListener("click", ()=>{
+    const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `cybersec-progress-${todayStr()}.json`;
+    a.click();
+  });
+  $("#importBtn").addEventListener("click", ()=> $("#importFile").click());
+  $("#importFile").addEventListener("change", async e=>{
+    const file = e.target.files[0]; if (!file) return;
+    const text = await file.text();
+    try{
+      const parsed = JSON.parse(text);
+      if (!confirm("Replace current data with imported JSON?")) return;
+      state = Object.assign(defaultState(), parsed);
+      saveLocal(); renderAll();
+      toast("Imported","success");
+    }catch(err){ toast("Import failed: invalid JSON","error"); }
+  });
+  $("#resetBtn").addEventListener("click", ()=>{
+    if (!confirm("Reset ALL local progress? This cannot be undone (cloud copy unaffected).")) return;
+    state = defaultState(); saveLocal(); renderAll();
+    toast("Reset complete");
+  });
+}
+
+// ---------- TABS ----------
+function switchTab(name){
+  $$("nav.tabs button").forEach(b=>b.classList.toggle("active", b.dataset.tab===name));
+  $$("section.view").forEach(s=>s.classList.toggle("active", s.id==="view-"+name));
+  if (name==="today") renderToday();
+  if (name==="weeks") renderWeeks();
+  if (name==="calendar") renderHeatmap();
+  if (name==="settings") renderSettings();
+  if (name==="dashboard") renderDashboard();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+// ---------- INIT ----------
+function renderAll(){
+  renderDashboard();
+  renderToday();
+  renderWeeks();
+  renderHeatmap();
+  renderSettings();
+}
+
+function init(){
+  // tabs
+  $$("nav.tabs button").forEach(b=> b.addEventListener("click", ()=> switchTab(b.dataset.tab)));
+  bindTodayInputs();
+  bindSettings();
+
+  // sync indicator initial state
+  if (settings.token && settings.gistId){
+    setSyncStatus("synced","connected · idle");
+    // try to pull on load (non-blocking)
+    pullFromGist().catch(err=>{
+      setSyncStatus("error","load failed");
+      toast("Could not pull on load: " + err.message, "error");
+    });
+  } else {
+    setSyncStatus("offline","local only");
+  }
+
+  renderAll();
+}
+
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
